@@ -79,6 +79,9 @@ Particles > 10 um / 0.1L air: 0
 ---------------------------------------------
 ```
  
+After the creation of the pms5003 object, which is configurable in the constructor, the library takes care of everything and you just have to register your callbacks or events.
+Of course you can change everything later as you see fit and change the reading mode, the eco mode or the polling interval in passive mode.
+ 
 ## Methods explained
 * __init__() has many options:
   * uart:       a uart object is required
