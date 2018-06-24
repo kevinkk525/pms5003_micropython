@@ -2,8 +2,8 @@
 Driver for pms5003 air quality sensor for micropython
 
 ## Description and features
-This driver for the (pms5003 air quality sensor)[http://www.aqmd.gov/docs/default-source/aq-spec/resources-page/plantower-pms5003-manual_v2-3.pdf] is specifically made for micropython.
-It can be used with esp32 (tested on (esp32_loboris fork)[https://github.com/loboris/MicroPython_ESP32_psRAM_LoBo]) and will not work on esp8266 as it only has one UART.
+This driver for the [pms5003 air quality sensor](http://www.aqmd.gov/docs/default-source/aq-spec/resources-page/plantower-pms5003-manual_v2-3.pdf) is specifically made for micropython.
+It can be used with esp32 (tested on [esp32_loboris fork](https://github.com/loboris/MicroPython_ESP32_psRAM_LoBo)) and will not work on esp8266 as it only has one UART.
 It is completely based on uasyncio
 
 The driver covers all features of the device:
