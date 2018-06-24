@@ -101,7 +101,8 @@ class PMS5003_base:
     @staticmethod
     def _debug(message):
         # Default logging implementation, to be overriden in subclasses if logging required
-        print(message)
+        if DEBUG:
+            print(message)
 
     def setEcoMode(self, value=True):
         """Puts device to sleep between readings in passive mode"""
