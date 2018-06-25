@@ -387,7 +387,7 @@ class PMS5003_base:
                 sleep = self._interval_passive_mode - (time.ticks_ms() - last_reading) / 1000
                 if self._eco_mode:
                     await self.sleep()
-                    sleep -= (WAIT_AFTER_WAKEUP + 2)  # +2 is experience as commands to wakeup and set mode take time
+                    sleep -= (WAIT_AFTER_WAKEUP + 1)  # +1 is experience as commands to wakeup and set mode take time
                 else:
                     woke_up = None  # probably changed mode during sleep
                 if sleep < 2:  # making 2s between reading attempts the smallest interval
