@@ -25,6 +25,7 @@ Reset and Set pin are completely optional though. The reset pin could make sense
 ## How to use
 ```
 import pms5003
+import machine
 import uasyncio as asyncio
 
 class Lock:
