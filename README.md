@@ -97,7 +97,7 @@ Of course you can change everything later as you see fit and change the reading 
 * _error/_warn/_debug: These are logging functions and can be adapted in a subclass
 * setEcoMode(boolean): Change EcoMode
 * async setActiveMode():  Set mode to active
-* async setPassiveMode(interval=None): Set mode to passive, interval optional, defaults to 60s
+* async setPassiveMode(interval=None): Set mode to passive, interval optional, defaults to 60s or the interval given in the constructor
 * async sleep():  Put device to sleep
 * async wakeUp(): Wake device
 * isActive(): Returns True if the device is actively read (_read() coroutine running)
@@ -127,9 +127,8 @@ The last read values (or None if the sensor is not active) can be accessed as pr
  
 ## Useful tips:
 * Using Events is slower than using the callback (a few ms up to a few hundred ms, depending on how many coroutines are waiting)
-* If you have a slow coroutine as callback and multiple callbacks registered, it will be faster to use Events as callbacks are processed after each other 
-* In active mode don't try to publish every frame. It is a bit slower than getting every value and some frames get lost anyway
-* If using passive mode then callbacks can take as long as  
+* If you have a slow coroutine as callback and multiple callbacks registered, it will be faster to use Events, as callbacks are processed after each other 
+* In active mode don't try to publish every frame to mqtt. It is a bit slower than getting every value and some frames get lost anyway. Building an average of every frame is possible. 
  
 ## Possible problems:
 * setActiveMode / setPassiveMode will wait until device has been woken from sleep as these commands don't wake the device
