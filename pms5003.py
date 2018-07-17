@@ -509,7 +509,7 @@ class PMS5003_base:
                 else:
                     return None
             elif frame_len == 0:
-                pass  # already got all bytes
+                pass  # wrong frame/bytes received
             else:
                 self._warn("Unexpected frame_len {!s}, probably random or scrambled bytes".format(frame_len))
 
