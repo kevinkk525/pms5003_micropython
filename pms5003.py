@@ -125,8 +125,6 @@ class PMS5003_base:
                 res = await self._sendCommand(0xe1, 0x01)
                 if res is None:
                     self._error("Error putting device in active mode")
-                    self._lock.release()
-                    # workaround until bug fixed and released: https://github.com/micropython/micropython/pull/3890
                     return False
             self._active_mode = True
             self._debug("setActiveMode Done")
@@ -145,7 +143,6 @@ class PMS5003_base:
                 res = await self._sendCommand(0xe1, 0x00)
                 if res is None:
                     self._error("Error putting device in passive mode")
-                    self._lock.release()  # workaround until bug fixed
                     return False
             if interval is not None:
                 self._interval_passive_mode = interval
@@ -174,7 +171,6 @@ class PMS5003_base:
                     if res is None:
                         self._sleeping_state = True  # just to make it possible for wakeUp to try again
                         self._error("Error putting device to sleep")
-                        self._lock.release()  # workaround until bug fixed
                         return False
             self._sleeping_state = True
         self._debug("Putting device to sleep")
@@ -193,7 +189,6 @@ class PMS5003_base:
                 res = await self._read_frame()
                 if res is None:
                     self._error("No response to wakeup pin change")
-                    self._lock.release()  # workaround until bug fixed
                     return False
             else:
                 res = await self._sendCommand(0xe4, 0x01, False, delay=16000, wait=WAIT_AFTER_WAKEUP * 1000)
@@ -202,7 +197,6 @@ class PMS5003_base:
                     res = await self._sendCommand(0xe4, 0x01, False, delay=16000, wait=WAIT_AFTER_WAKEUP * 1000)
                     if res is None:
                         self._error("No response to wakeup command")
-                        self._lock.release()  # workaround until bug fixed
                         return False
                 self._uart.flush()
         self._debug("device woke up")
@@ -227,9 +221,7 @@ class PMS5003_base:
                 async with self._lock:
                     if await self._read_frame() is None:
                         self._error("Reset did not work, reset manually")
-                        self._lock.release()  # workaround until bug fixed
                         return False
-                    self._lock.release()  # workaround until bug fixed
                     return True
         else:
             self._error("No reset pin defined, can't reset")
@@ -408,7 +400,6 @@ class PMS5003_base:
             async with self._lock:
                 self._debug("readFrame got lock")
                 res = await self.__read_frame(with_async)  # can be None
-                self._lock.release()  # workaround until bug fixed
                 self._debug("readFrame got: {!s}".format(res))
                 return res
         else:
