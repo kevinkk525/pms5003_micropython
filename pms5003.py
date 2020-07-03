@@ -152,7 +152,7 @@ class PMS5003_base:
                     self._interval_passive_mode = 60
             self._active_mode = False
             await asyncio.sleep_ms(100)
-            self._uart.flush()  # no leftovers from active mode
+            self._flush_uart()  # no leftovers from active mode
         self._debug("setPassiveMode done")
         return True
 
@@ -180,12 +180,12 @@ class PMS5003_base:
         self._debug("wakeUp")
         async with self._lock:
             self._debug("wakeUp got lock")
-            self._uart.flush()
+            self._flush_uart()
             if self._set_pin is not None:
                 self._set_pin.value(1)
                 self._debug("Waiting {!s}s".format(WAIT_AFTER_WAKEUP))
                 await asyncio.sleep_ms(WAIT_AFTER_WAKEUP)
-                self._uart.flush()
+                self._flush_uart()
                 res = await self._read_frame()
                 if res is None:
                     self._error("No response to wakeup pin change")
@@ -198,7 +198,7 @@ class PMS5003_base:
                     if res is None:
                         self._error("No response to wakeup command")
                         return False
-                self._uart.flush()
+                self._flush_uart()
         self._debug("device woke up")
         self._sleeping_state = False
         if self._active_mode is False:
@@ -238,7 +238,7 @@ class PMS5003_base:
         s = sum(arr[:5])
         arr[5] = int(s / 256)
         arr[6] = s % 256
-        self._uart.flush()
+        self._flush_uart()
         self._uart.write(arr)
         et = time.ticks_ms() + delay + (wait if wait else 0)
         frame_len = CMD_FRAME_LENGTH + 4 if expect_command else DATA_FRAME_LENGTH + 4
@@ -246,7 +246,7 @@ class PMS5003_base:
         if wait:
             self._debug("waiting {!s}s".format(wait / 1000))
             await asyncio.sleep_ms(wait)
-            self._uart.flush()
+            self._flush_uart()
         while time.ticks_ms() < et:
             await asyncio.sleep_ms(100)
             if self._uart.any() >= frame_len:
@@ -314,6 +314,10 @@ class PMS5003_base:
             print("")
         else:
             print("PMS5003 Sensor not active")
+
+    def _flush_uart(self):
+        while self._uart.any():
+            self._uart.read(self._uart.any())
 
     async def _read(self):
         woke_up = None
@@ -476,7 +480,7 @@ class PMS5003_base:
                 checksum = sum(buffer[0:frame_len + 2])
                 if check == checksum:
                     if self._uart.any() > 32:
-                        self._uart.flush()  # just to prevent getting flooded if a callback took too long
+                        self._flush_uart()  # just to prevent getting flooded if a callback took too long
                         self._warn("Getting too many new data frames, callback too slow")
                     frame = struct.unpack(">HHHHHHHHHHHHHH", bytes(buffer[4:]))
                     no_values = True
