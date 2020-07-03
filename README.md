@@ -3,8 +3,8 @@ Driver for pms5003 air quality sensor for micropython
 
 ## Description and features
 This driver for the [pms5003 air quality sensor](http://www.aqmd.gov/docs/default-source/aq-spec/resources-page/plantower-pms5003-manual_v2-3.pdf) is specifically made for micropython.
-It can be used with esp32 (tested on [esp32_loboris fork](https://github.com/loboris/MicroPython_ESP32_psRAM_LoBo)) and will not work on esp8266 as it only has one UART.
-It is completely based on uasyncio
+It should be usable on all ports that have a uart with configurable baudrate.
+It is completely based on uasyncio.
 
 The driver covers all features of the device:
 * sleep mode and wake up by pin and uart
@@ -20,7 +20,7 @@ Reset and Set pin are completely optional though. The reset pin could make sense
 
 ## Dependencies
 
-* uasyncio (Version >= 2.0)
+* uasyncio (Version 2.0) [not version 3.0 ready yet]
 
 ## How to use
 ```
@@ -35,14 +35,14 @@ class Lock:
     async def __aenter__(self):
         while True:
             if self._locked:
-                await asyncio.sleep_ms(_DEFAULT_MS)
+                await asyncio.sleep_ms(20)
             else:
                 self._locked = True
                 break
 
     async def __aexit__(self, *args):
         self._locked = False
-        await asyncio.sleep_ms(_DEFAULT_MS)
+        await asyncio.sleep_ms(20)
 
     def locked(self):
         return self._locked
