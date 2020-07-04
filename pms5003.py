@@ -25,8 +25,8 @@
 
 # command responses are only processed generally but can't distinguish between different responses
 
-__updated__ = "2020-07-03"
-__version__ = "1.9.11"
+__updated__ = "2020-07-04"
+__version__ = "1.9.12"
 
 import uasyncio as asyncio
 import time
@@ -56,7 +56,7 @@ def set_debug(debug):
 
 
 class PMS5003_base:
-    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None,
+    def __init__(self, uart, lock=None, set_pin=None, reset_pin=None, interval_passive_mode=None,
                  event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
         self._uart = uart  # accepts a uart object
         self._set_pin = set_pin
@@ -68,7 +68,7 @@ class PMS5003_base:
         self._active = True
         self._active_mode = active_mode  # passive mode will be set on first wakeUp() in _read()
         self._eco_mode = eco_mode  # only works with passive mode as sleep is not possible in active_mode
-        self._sreader = asyncio.StreamReader(uart)
+        self._sreader = asyncio.Stream(uart)
         self._interval_passive_mode = interval_passive_mode or 60  # in case someone forgets to set it
         if self._eco_mode and self._active_mode is False and self._interval_passive_mode < WAIT_AFTER_WAKEUP + 5:
             self._error(
@@ -76,12 +76,12 @@ class PMS5003_base:
                     WAIT_AFTER_WAKEUP + 5))
             self._interval_passive_mode = 60
         self._event = event
-        self._lock = lock
+        self._lock = asyncio.Lock()
         self._timestamp = None
         self._sleeping_state = assume_sleeping  # assume sleeping on start by default
         self._invalidateMeasurements()
         self._callback = None  # can be a short coroutine too; no args given
-        asyncio.get_event_loop().create_task(self._read())
+        asyncio.create_task(self._read())
 
     @staticmethod
     def _error(message):
@@ -272,7 +272,7 @@ class PMS5003_base:
         # coroutine as everything else is a coroutine
         if self._active is False:
             self._active = True
-            asyncio.get_event_loop().create_task(self._read())
+            asyncio.create_task(self._read())
         else:
             self._warn("Sensor already active")
 
@@ -301,11 +301,11 @@ class PMS5003_base:
             print("Concentration Units (standard)")
             print("---------------------------------------------")
             print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (
-            self._pm10_standard, self._pm25_standard, self._pm100_standard))
+                self._pm10_standard, self._pm25_standard, self._pm100_standard))
             print("Concentration Units (environmental)")
             print("---------------------------------------------")
             print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (
-            self._pm10_env, self._pm25_env, self._pm100_env))
+                self._pm10_env, self._pm25_env, self._pm100_env))
             print("---------------------------------------------")
             print("Particles > 0.3um / 0.1L air:", self._particles_03um)
             print("Particles > 0.5um / 0.1L air:", self._particles_05um)
@@ -604,9 +604,9 @@ class PMS5003_base:
 
 
 class PMS5003(PMS5003_base):
-    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None,
+    def __init__(self, uart, lock=None, set_pin=None, reset_pin=None, interval_passive_mode=None,
                  event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
-        super().__init__(uart, lock, set_pin=set_pin, reset_pin=reset_pin,
+        super().__init__(uart, set_pin=set_pin, reset_pin=reset_pin,
                          interval_passive_mode=interval_passive_mode,
                          event=event, active_mode=active_mode, eco_mode=eco_mode,
                          assume_sleeping=assume_sleeping)
