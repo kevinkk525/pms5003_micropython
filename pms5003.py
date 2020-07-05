@@ -1,6 +1,6 @@
 # MIT License
 #
-# Copyright (c) 2018, Kevin Köck
+# Copyright (c) 2018-2020, Kevin Köck
 #
 # Permission is hereby granted, free of charge, to any person obtaining a copy
 # of this software and associated documentation files (the "Software"), to deal
@@ -20,19 +20,13 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 # THE SOFTWARE.
 
-'''
-Created on 16.06.2018
-
-@author: Kevin Köck
-'''
-
 # based on circuitpython-code of adafruit: https://learn.adafruit.com/pm25-air-quality-sensor/circuitpython-code
 # and some inspiration from https://github.com/RigacciOrg/AirPi/blob/master/lib/pms5003
 
 # command responses are only processed generally but can't distinguish between different responses
 
-__updated__ = "2018-06-24"
-__version__ = "1.9.9"
+__updated__ = "2020-07-03"
+__version__ = "1.9.11"
 
 import uasyncio as asyncio
 import time
@@ -62,8 +56,8 @@ def set_debug(debug):
 
 
 class PMS5003_base:
-    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None, event=None,
-                 active_mode=True, eco_mode=True, assume_sleeping=True):
+    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None,
+                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
         self._uart = uart  # accepts a uart object
         self._set_pin = set_pin
         if set_pin is not None:
@@ -78,7 +72,8 @@ class PMS5003_base:
         self._interval_passive_mode = interval_passive_mode or 60  # in case someone forgets to set it
         if self._eco_mode and self._active_mode is False and self._interval_passive_mode < WAIT_AFTER_WAKEUP + 5:
             self._error(
-                "interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(WAIT_AFTER_WAKEUP + 5))
+                "interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(
+                    WAIT_AFTER_WAKEUP + 5))
             self._interval_passive_mode = 60
         self._event = event
         self._lock = lock
@@ -108,8 +103,9 @@ class PMS5003_base:
         """Puts device to sleep between readings in passive mode"""
         self._eco_mode = value
         if self._eco_mode and self._active_mode is False and self._interval_passive_mode < WAIT_AFTER_WAKEUP + 5:
-            self._error("interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(
-                WAIT_AFTER_WAKEUP + 5))
+            self._error(
+                "interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(
+                    WAIT_AFTER_WAKEUP + 5))
             self._interval_passive_mode = 60
 
     async def setActiveMode(self):
@@ -147,12 +143,13 @@ class PMS5003_base:
             if interval is not None:
                 self._interval_passive_mode = interval
                 if self._eco_mode and self._active_mode is False and self._interval_passive_mode < WAIT_AFTER_WAKEUP + 5:
-                    self._error("interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(
-                        WAIT_AFTER_WAKEUP + 5))
+                    self._error(
+                        "interval_passive_mode can't be less than DEVICE_WAKEUP_TIME of {!s}s".format(
+                            WAIT_AFTER_WAKEUP + 5))
                     self._interval_passive_mode = 60
             self._active_mode = False
             await asyncio.sleep_ms(100)
-            self._uart.flush()  # no leftovers from active mode
+            self._flush_uart()  # no leftovers from active mode
         self._debug("setPassiveMode done")
         return True
 
@@ -180,25 +177,27 @@ class PMS5003_base:
         self._debug("wakeUp")
         async with self._lock:
             self._debug("wakeUp got lock")
-            self._uart.flush()
+            self._flush_uart()
             if self._set_pin is not None:
                 self._set_pin.value(1)
                 self._debug("Waiting {!s}s".format(WAIT_AFTER_WAKEUP))
                 await asyncio.sleep_ms(WAIT_AFTER_WAKEUP)
-                self._uart.flush()
+                self._flush_uart()
                 res = await self._read_frame()
                 if res is None:
                     self._error("No response to wakeup pin change")
                     return False
             else:
-                res = await self._sendCommand(0xe4, 0x01, False, delay=16000, wait=WAIT_AFTER_WAKEUP * 1000)
+                res = await self._sendCommand(0xe4, 0x01, False, delay=16000,
+                                              wait=WAIT_AFTER_WAKEUP * 1000)
                 if res is None:
                     await asyncio.sleep_ms(100)
-                    res = await self._sendCommand(0xe4, 0x01, False, delay=16000, wait=WAIT_AFTER_WAKEUP * 1000)
+                    res = await self._sendCommand(0xe4, 0x01, False, delay=16000,
+                                                  wait=WAIT_AFTER_WAKEUP * 1000)
                     if res is None:
                         self._error("No response to wakeup command")
                         return False
-                self._uart.flush()
+                self._flush_uart()
         self._debug("device woke up")
         self._sleeping_state = False
         if self._active_mode is False:
@@ -228,7 +227,8 @@ class PMS5003_base:
             return False
 
     async def _sendCommand(self, command, data, expect_command=True, delay=1000, wait=None):
-        self._debug("Sending command: {!s},{!s},{!s},{!s}".format(command, data, expect_command, delay))
+        self._debug(
+            "Sending command: {!s},{!s},{!s},{!s}".format(command, data, expect_command, delay))
         arr = bytearray(7)
         arr[0] = 0x42
         arr[1] = 0x4d
@@ -238,7 +238,7 @@ class PMS5003_base:
         s = sum(arr[:5])
         arr[5] = int(s / 256)
         arr[6] = s % 256
-        self._uart.flush()
+        self._flush_uart()
         self._uart.write(arr)
         et = time.ticks_ms() + delay + (wait if wait else 0)
         frame_len = CMD_FRAME_LENGTH + 4 if expect_command else DATA_FRAME_LENGTH + 4
@@ -246,7 +246,7 @@ class PMS5003_base:
         if wait:
             self._debug("waiting {!s}s".format(wait / 1000))
             await asyncio.sleep_ms(wait)
-            self._uart.flush()
+            self._flush_uart()
         while time.ticks_ms() < et:
             await asyncio.sleep_ms(100)
             if self._uart.any() >= frame_len:
@@ -286,7 +286,8 @@ class PMS5003_base:
             self._callback = [self._callback, callback]
 
     def registerEvent(self, event):
-        # enhances usability; by using an event with active mode a fast reaction to changing values is possible
+        # enhances usability; by using an event with active mode a fast reaction to
+        # changing values is possible
         self._event = event
 
     def print(self):
@@ -299,10 +300,12 @@ class PMS5003_base:
             print("---------------------------------------------")
             print("Concentration Units (standard)")
             print("---------------------------------------------")
-            print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (self._pm10_standard, self._pm25_standard, self._pm100_standard))
+            print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (
+            self._pm10_standard, self._pm25_standard, self._pm100_standard))
             print("Concentration Units (environmental)")
             print("---------------------------------------------")
-            print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (self._pm10_env, self._pm25_env, self._pm100_env))
+            print("PM 1.0: %d\tPM2.5: %d\tPM10: %d" % (
+            self._pm10_env, self._pm25_env, self._pm100_env))
             print("---------------------------------------------")
             print("Particles > 0.3um / 0.1L air:", self._particles_03um)
             print("Particles > 0.5um / 0.1L air:", self._particles_05um)
@@ -314,6 +317,10 @@ class PMS5003_base:
             print("")
         else:
             print("PMS5003 Sensor not active")
+
+    def _flush_uart(self):
+        while self._uart.any():
+            self._uart.read(self._uart.any())
 
     async def _read(self):
         woke_up = None
@@ -363,7 +370,8 @@ class PMS5003_base:
                             if self._active and self._event is not None:
                                 self._event.set()
                             if self._active and self._callback is not None:
-                                cbs = [self._callback] if type(self._callback) != list else self._callback
+                                cbs = [self._callback] if type(
+                                    self._callback) != list else self._callback
                                 for cb in cbs:
                                     # call callback or await coroutine, should be short.
                                     tmp = cb()
@@ -373,18 +381,21 @@ class PMS5003_base:
                         counter += 1
                         await asyncio.sleep_ms(100)
             if self._active_mode:
-                await asyncio.sleep_ms(100)  # give other commands time to send and receive response (keep lock free)
+                await asyncio.sleep_ms(100)
+                # give other commands time to send and receive response (keep lock free)
                 woke_up = None
             else:
                 sleep = self._interval_passive_mode - (time.ticks_ms() - last_reading) / 1000
                 if self._eco_mode:
                     await self.sleep()
-                    sleep -= (WAIT_AFTER_WAKEUP + 1)  # +1 is experience as commands to wakeup and set mode take time
+                    sleep -= (WAIT_AFTER_WAKEUP + 1)
+                    # +1 is experience as commands to wakeup and set mode take time
                 else:
                     woke_up = None  # probably changed mode during sleep
                 if sleep < 2:  # making 2s between reading attempts the smallest interval
                     sleep = 2
-                sleep = int(sleep)  # a bit of rounding the value, a few hundred ms earlier is neede for commands
+                sleep = int(sleep)
+                # a bit of rounding the value, a few hundred ms earlier is needed for commands
                 self._debug("loop sleep for {!s}s".format(sleep))
                 await asyncio.sleep(sleep)
                 if self._sleeping_state:
@@ -442,8 +453,12 @@ class PMS5003_base:
             else:
                 await self.__await_bytes(preframe_len, 100)
                 data = self._uart.read(preframe_len)
+            if len(data) is None:
+                self._debug("Read no data from uart despite having waited for data")
+                return None
             if len(data) != preframe_len and len(data) > 0:
-                self._error("Short read, expected {!s} bytes, got {!s}".format(preframe_len, len(data)))
+                self._error(
+                    "Short read, expected {!s} bytes, got {!s}".format(preframe_len, len(data)))
                 return None
             if data == b'':
                 return None
@@ -469,14 +484,15 @@ class PMS5003_base:
                     await self.__await_bytes(frame_len - CMD_FRAME_LENGTH, 100)
                     data = self._uart.read(frame_len - CMD_FRAME_LENGTH)
                 if len(data) != DATA_FRAME_LENGTH - CMD_FRAME_LENGTH:
-                    self._error("Short read, expected {!s} bytes, got {!s}".format(frame_len, len(data)))
+                    self._error(
+                        "Short read, expected {!s} bytes, got {!s}".format(frame_len, len(data)))
                     return None
                 buffer += list(data)
                 check = buffer[-2] * 256 + buffer[-1]
                 checksum = sum(buffer[0:frame_len + 2])
                 if check == checksum:
                     if self._uart.any() > 32:
-                        self._uart.flush()  # just to prevent getting flooded if a callback took too long
+                        self._flush_uart()  # just to prevent getting flooded if a callback took too long
                         self._warn("Getting too many new data frames, callback too slow")
                     frame = struct.unpack(">HHHHHHHHHHHHHH", bytes(buffer[4:]))
                     no_values = True
@@ -502,7 +518,8 @@ class PMS5003_base:
             elif frame_len == 0:
                 pass  # wrong frame/bytes received
             else:
-                self._warn("Unexpected frame_len {!s}, probably random or scrambled bytes".format(frame_len))
+                self._warn("Unexpected frame_len {!s}, probably random or scrambled bytes".format(
+                    frame_len))
 
             buffer = []
             continue
@@ -587,10 +604,12 @@ class PMS5003_base:
 
 
 class PMS5003(PMS5003_base):
-    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None, event=None,
-                 active_mode=True, eco_mode=True, assume_sleeping=True):
-        super().__init__(uart, lock, set_pin=set_pin, reset_pin=reset_pin, interval_passive_mode=interval_passive_mode,
-                         event=event, active_mode=active_mode, eco_mode=eco_mode, assume_sleeping=assume_sleeping)
+    def __init__(self, uart, lock, set_pin=None, reset_pin=None, interval_passive_mode=None,
+                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
+        super().__init__(uart, lock, set_pin=set_pin, reset_pin=reset_pin,
+                         interval_passive_mode=interval_passive_mode,
+                         event=event, active_mode=active_mode, eco_mode=eco_mode,
+                         assume_sleeping=assume_sleeping)
 
     async def _makeResilient(self, *args, **kwargs):
         if "first_try" not in kwargs:
@@ -636,11 +655,13 @@ class PMS5003(PMS5003_base):
     async def setActiveMode(self):
         while self._active is True and self._sleeping_state is True:
             await asyncio.sleep_ms(100)
-            # device has to wake up first and after that we'll set the state or weird behaviour possible otherwise
+            # device has to wake up first and after that we'll set the state or
+            # weird behaviour possible otherwise
         await self._makeResilient(super().setActiveMode)
 
     async def setPassiveMode(self, interval=None):
         while self._active is True and self._sleeping_state is True:
             await asyncio.sleep_ms(100)
-            # device has to wake up first and after that we'll set the state or weird behaviour possible otherwise
+            # device has to wake up first and after that we'll set the state or
+            # weird behaviour possible otherwise
         await self._makeResilient(super().setPassiveMode, interval=interval)
