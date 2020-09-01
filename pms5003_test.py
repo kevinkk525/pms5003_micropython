@@ -7,32 +7,8 @@ loop = asyncio.get_event_loop()
 
 _DEFAULT_MS = 20
 
-
-class Lock:
-    def __init__(self):
-        self._locked = False
-
-    async def __aenter__(self):
-        while True:
-            if self._locked:
-                await asyncio.sleep_ms(_DEFAULT_MS)
-            else:
-                self._locked = True
-                break
-
-    async def __aexit__(self, *args):
-        self._locked = False
-        await asyncio.sleep_ms(_DEFAULT_MS)
-
-    def locked(self):
-        return self._locked
-
-    def release(self):  # workaround until fixed https://github.com/micropython/micropython/issues/3153
-        self._locked = False
-
-
 pm = None
-lock = Lock()
+lock = asyncio.Lock()
 
 
 async def printit():
@@ -61,7 +37,7 @@ async def testing():
     print("----------------------------------------------------------")
     print("")
     print("")
-    asyncio.get_event_loop().create_task(pm.setActiveMode())
+    asyncio.create_task(pm.setActiveMode())
     await asyncio.sleep(120)
     print("")
     print("")
@@ -73,7 +49,7 @@ async def testing():
     print("")
     print("")
     pm.setEcoMode(False)
-    asyncio.get_event_loop().create_task(pm.setPassiveMode(20))
+    asyncio.create_task(pm.setPassiveMode(20))
     await asyncio.sleep(120)
     print("")
     print("")
@@ -93,8 +69,7 @@ def start():
     pm = pms5003.PMS5003(uart, lock, active_mode=False, interval_passive_mode=60)
     pms5003.set_debug(True)
     pm.registerCallback(printit)
-    asyncio.get_event_loop().create_task(idle())  # needed on esp32_LoBo to not trigger watchdog.
-    asyncio.get_event_loop().create_task(testing())
+    asyncio.create_task(testing())
     asyncio.get_event_loop().run_forever()
 
 
