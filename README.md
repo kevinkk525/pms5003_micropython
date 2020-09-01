@@ -20,7 +20,7 @@ Reset and Set pin are completely optional though. The reset pin could make sense
 
 ## Dependencies
 
-* uasyncio (Version 2.0) [not version 3.0 ready yet]
+* uasyncio version >=3.0 (included in daily builds and micropython releases >1.12)
 
 ## How to use
 ```
@@ -28,31 +28,8 @@ import pms5003
 import machine
 import uasyncio as asyncio
 
-class Lock:
-    def __init__(self):
-        self._locked = False
-
-    async def __aenter__(self):
-        while True:
-            if self._locked:
-                await asyncio.sleep_ms(20)
-            else:
-                self._locked = True
-                break
-
-    async def __aexit__(self, *args):
-        self._locked = False
-        await asyncio.sleep_ms(20)
-
-    def locked(self):
-        return self._locked
-
-    def release(self):
-        self._locked = False
-        
-lock = Lock()
 uart = machine.UART(1, tx=25, rx=26, baudrate=9600)
-pm = pms5003.PMS5003(uart, lock) 
+pm = pms5003.PMS5003(uart)
 pm.registerCallback(pm.print)
 
 loop=asyncio.get_event_loop()
@@ -86,7 +63,7 @@ Of course you can change everything later as you see fit and change the reading 
 ## Methods explained
 * __init__() has many options:
   * uart:       a uart object is required
-  * lock:       an asyncio lock object is needed too. If you don't have one, copy it from the example
+  * lock:       deprecated, a lock will be created automatically. argument will be ignored, only kept available for compatibility.
   * set_pin:    optional, a pin for putting to sleep/waking up, functionality covered by uart
   * reset_pin:  optional, a pin for resetting the device in case of an error
   * interval_passive_mode: optional, defaults to 60s, the device will be read in this interval in passive mode
@@ -132,4 +109,4 @@ The last read values (or None if the sensor is not active) can be accessed as pr
  
 ## Possible problems:
 * setActiveMode / setPassiveMode will wait until device has been woken from sleep as these commands don't wake the device
-* in active_mode uasnycio.StreamReader is used, which waits for a new byte eternally, therefore blocking the lock and preventing changes in case of error (except a reset) if the RX line stays stable. If some noise is read then the *_read()* should stop. A reset will also stop it.
+* in active_mode uasyncio.Stream is used, which waits for a new byte eternally, therefore blocking the lock and preventing changes in case of error (except a reset) if the RX line stays stable. If some noise is read then the *_read()* should stop. A reset will also stop it. (This could probably be changed into a uasyncio task that get canceled but haven't tested this and it would require some rewriting of the code. Earlier versions of uasyncio wouldn't cancel Streams.)
