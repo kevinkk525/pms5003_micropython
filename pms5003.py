@@ -68,7 +68,7 @@ class PMS5003_base:
         self._active = True
         self._active_mode = active_mode  # passive mode will be set on first wakeUp() in _read()
         self._eco_mode = eco_mode  # only works with passive mode as sleep is not possible in active_mode
-        self._sreader = asyncio.Stream(uart)
+        self._sreader = asyncio.StreamReader(uart)
         self._interval_passive_mode = interval_passive_mode or 60  # in case someone forgets to set it
         if self._eco_mode and self._active_mode is False and self._interval_passive_mode < WAIT_AFTER_WAKEUP + 5:
             self._error(
