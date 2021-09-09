@@ -453,7 +453,7 @@ class PMS5003_base:
             else:
                 await self.__await_bytes(preframe_len, 100)
                 data = self._uart.read(preframe_len)
-            if len(data) is None:
+            if data is None or len(data)==0:
                 self._debug("Read no data from uart despite having waited for data")
                 return None
             if len(data) != preframe_len and len(data) > 0:
