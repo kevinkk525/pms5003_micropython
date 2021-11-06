@@ -71,6 +71,7 @@ Of course you can change everything later as you see fit and change the reading 
   * active_mode:  boolean, defaults to True; in active_mode the device will send new data every few seconds and the library just listens; in passive mode interval_passive_mode is used to periodically request data from the device
   * eco_mode:   boolean, defaults to True, if the device is in passive mode, then it will be put to sleep between data requests
   * assume_sleeping: boolean, defaults to True; assume that the device is in sleeping state when library starts. If set to False and device happens to be in sleeping state (e.g. because of microcontroller reset) the library will probably fail as it can't read anything. Only change this if you know why you do it.
+  * accept_zero_values: boolean, defaults to False, it's possible that your sensor correctly returns all zeros which you may want to include in your data collection.
 * _error/_warn/_debug: These are logging functions and can be adapted in a subclass
 * setEcoMode(boolean): Change EcoMode
 * async setActiveMode():  Set mode to active

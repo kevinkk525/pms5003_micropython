@@ -30,6 +30,7 @@ __version__ = "1.9.12"
 
 import uasyncio as asyncio
 import time
+import uos
 
 try:
     import struct
@@ -57,8 +58,9 @@ def set_debug(debug):
 
 class PMS5003_base:
     def __init__(self, uart, lock=None, set_pin=None, reset_pin=None, interval_passive_mode=None,
-                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
+                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True, accept_zero_values=False):
         self._uart = uart  # accepts a uart object
+        self._accept_zero_values = accept_zero_values
         self._set_pin = set_pin
         if set_pin is not None:
             set_pin.value(1)
@@ -192,8 +194,8 @@ class PMS5003_base:
                                               wait=WAIT_AFTER_WAKEUP * 1000)
                 if res is None:
                     await asyncio.sleep_ms(100)
-                    res = await self._sendCommand(0xe4, 0x01, False, delay=16000,
-                                                  wait=WAIT_AFTER_WAKEUP * 1000)
+                    res = await self._sendCommand(0xe2, 0x00, False)
+                                                  
                     if res is None:
                         self._error("No response to wakeup command")
                         return False
@@ -242,6 +244,7 @@ class PMS5003_base:
         self._uart.write(arr)
         et = time.ticks_ms() + delay + (wait if wait else 0)
         frame_len = CMD_FRAME_LENGTH + 4 if expect_command else DATA_FRAME_LENGTH + 4
+        if uos.uname().sysname == 'esp8266': frame_len = 1 # uart.any() always returns 1 on esp8266
         # self._debug("Expecting {!s}".format(frame_len))
         if wait:
             self._debug("waiting {!s}s".format(wait / 1000))
@@ -453,7 +456,7 @@ class PMS5003_base:
             else:
                 await self.__await_bytes(preframe_len, 100)
                 data = self._uart.read(preframe_len)
-            if len(data) is None:
+            if data is None or len(data)==0:
                 self._debug("Read no data from uart despite having waited for data")
                 return None
             if len(data) != preframe_len and len(data) > 0:
@@ -499,7 +502,7 @@ class PMS5003_base:
                     for i in range(6, 12):
                         if frame[i] != 0:
                             no_values = False
-                    if no_values:
+                    if no_values and not self._accept_zero_values: # if your air is superduper clean, it's possible to receive all zero values
                         buffer = []
                         self._debug("got no values")
                         await asyncio.sleep_ms(50)
@@ -605,11 +608,11 @@ class PMS5003_base:
 
 class PMS5003(PMS5003_base):
     def __init__(self, uart, lock=None, set_pin=None, reset_pin=None, interval_passive_mode=None,
-                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True):
+                 event=None, active_mode=True, eco_mode=True, assume_sleeping=True, accept_zero_values=False):
         super().__init__(uart, set_pin=set_pin, reset_pin=reset_pin,
                          interval_passive_mode=interval_passive_mode,
                          event=event, active_mode=active_mode, eco_mode=eco_mode,
-                         assume_sleeping=assume_sleeping)
+                         assume_sleeping=assume_sleeping, accept_zero_values=accept_zero_values)
 
     async def _makeResilient(self, *args, **kwargs):
         if "first_try" not in kwargs:
